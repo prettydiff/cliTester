@@ -1,5 +1,7 @@
 /*prettydiff.com api.topcoms: true, api.insize: 4, api.inchar: " ", api.vertical: true */
-/*jslint node:true */
+
+/*jslint node:true, for:true */
+
 /***********************************************************************
  PDrunner is written by Austin Cheney on 26 June 2015.  Anybody may use
  this code without permission so long as this comment exists verbatim in
@@ -8,10 +10,11 @@
  http://prettydiff.com/
 ***********************************************************************/
 
-//todo
-//* create output function - .replace(/\n/g, "\\n")
-//* allow functions/commands as assertions
-//* allow support for multiple test files
+/*pending tasks
+ * write a generate output function - .replace(/\n/g, "\\n")
+ * allow functions/commands as assertions
+ * allow support for multiple test files
+ */
 
 (function testrunner() {
     "use strict";
@@ -26,16 +29,17 @@
         fgroup    = 0, //total number of groups containing failed tests
         fails     = 0, //total number of failed tests
         depth     = -1, //current depth
-        single    = false,
-        //look for the unit test file
+        single    = false,//look for the unit test file
         tests     = (function () {
             var location = process.argv[2],
-                loctry = (typeof location === "string" && location.length > 0) ? require(location) : require("./tests.js");
+                loctry   = (typeof location === "string" && location.length > 0)
+                    ? require(location)
+                    : require("./tests.js");
             if (typeof loctry.tests === "object" && loctry.tests.length > 0) {
                 return loctry.tests;
             }
         }()),
-        unitsort = function (aa, bb) {
+        unitsort  = function (aa, bb) {
             if (aa.group === undefined && bb.group !== undefined) {
                 return -1;
             }
@@ -43,31 +47,31 @@
         },
         shell     = function testrunner__shell(testData) {
             var childExec = require("child_process").exec,
-                child = function testrunner__shell_child(param) {
+                child     = function testrunner__shell_child(param) {
                     childExec(param.check, function testrunner__shell_child(err, stdout, stderr) {
-                        var data      = [param.name],
-                            spare     = {},
-                            //what to do when a group concludes
+                        var data      = [param.name],//what to do when a group concludes
                             writeLine = function writeLine(item) {
-                                var fail    = 0,
-                                    failper = 0,
-                                    plural  = "",
-                                    groupn  = single
+                                var fail          = 0,
+                                    failper       = 0,
+                                    plural        = "",
+                                    groupn        = single
                                         ? ""
                                         : " for group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m",
-                                    totaln  = single
+                                    totaln        = single
                                         ? ""
                                         : " in current group, " + total + " total",
-                                    status  = (item[1] === "pass") ? "\x1B[32mPass\x1B[39m test " : "\x1B[31mFail\x1B[39m test ",
-                                    tab = (function testrunner__shell_child_writeLine_tab() {
-                                        var a = 0,
+                                    status        = (item[1] === "pass")
+                                        ? "\x1B[32mPass\x1B[39m test "
+                                        : "\x1B[31mFail\x1B[39m test ",
+                                    tab           = (function testrunner__shell_child_writeLine_tab() {
+                                        var a   = 0,
                                             str = "";
                                         for (a = 0; a < depth; a += 1) {
                                             str += "  ";
                                         }
                                         return str;
                                     }()),
-                                    groupEnd = function testrunner__shell_child_writeLine_groupEnd() {
+                                    groupEnd      = function testrunner__shell_child_writeLine_groupEnd() {
                                         var groupPass = false;
                                         if (teardowns[depth].length === 0) {
                                             console.log("");
@@ -87,8 +91,8 @@
                                                     console.log(tab + "\x1B[31mAll " + grouplen[depth] + " tests failed" + groupn + "\x1B[39m");
                                                 }
                                             } else {
-                                                fgroup += 1;
-                                                fail = complete[depth] - passcount[depth];
+                                                fgroup  += 1;
+                                                fail    = complete[depth] - passcount[depth];
                                                 failper = (fail / grouplen[depth]) * 100;
                                                 if (fail === 1) {
                                                     plural = "";
@@ -105,18 +109,26 @@
                                         complete.pop();
                                         depth -= 1;
                                         if (depth > -1) {
-                                            tab = tab.slice(2);
+                                            tab             = tab.slice(2);
                                             complete[depth] += 1;
-                                            groupn = " for group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m";
+                                            groupn          = " for group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m";
                                             if (groupPass === true) {
                                                 passcount[depth] += 1;
                                             }
                                         } else {
                                             console.log("\n\nAll tests complete.");
-                                            plural = (total === 1) ? "" : "s";
-                                            totaln = (fails === 1) ? "" : "s";
-                                            groupn = (fgroup === 1) ? "" : "s";
-                                            status = (gcount === 1) ? "" : "s";
+                                            plural = (total === 1)
+                                                ? ""
+                                                : "s";
+                                            totaln = (fails === 1)
+                                                ? ""
+                                                : "s";
+                                            groupn = (fgroup === 1)
+                                                ? ""
+                                                : "s";
+                                            status = (gcount === 1)
+                                                ? ""
+                                                : "s";
                                             if (fails === 0) {
                                                 console.log("\x1B[32mPassed all " + total + " test" + plural + " from all " + gcount + " groups.\x1B[39m");
                                             } else if (fails === total) {
@@ -124,14 +136,15 @@
                                             } else {
                                                 console.log("\x1B[31mFailed " + fails + " test" + totaln + " from " + fgroup + " group" + groupn + "\x1B[39m out of " + total + " total tests across " + gcount + " group" + status + ".");
                                             }
+                                            return stdout;
                                         }
                                         if (depth > -1 && complete[depth] === grouplen[depth]) {
                                             groupComplete();
                                         }
                                     },
-                                    teardown = function testrunner__shell_child_writeLine_teardown(tasks) {
-                                        var a = 0,
-                                            len = tasks.length,
+                                    teardown      = function testrunner__shell_child_writeLine_teardown(tasks) {
+                                        var a    = 0,
+                                            len  = tasks.length,
                                             task = function testrunner__shell_child_writeLine_teardown_task() {
                                                 console.log(tab + tasks[a]);
                                                 childExec(tasks[a], function testrunner__shell_child_writeLine_teardown_task_exec(err, stdout, stderr) {
@@ -144,9 +157,9 @@
                                                         if (a === len) {
                                                             console.log(tab + "Tear down for group \x1B[33m" + groupname[depth] + "\x1B[39m complete.");
                                                             groupEnd();
-                                                        } else {
-                                                            task();
+                                                            return stdout;
                                                         }
+                                                        task();
                                                     }
                                                 });
                                             };
@@ -183,8 +196,7 @@
                                 } else if (units[complete[depth]] !== undefined && units[complete[depth]].group !== undefined) {
                                     shell(units[complete[depth]]);
                                 }
-                            };
-                        //determine pass/fail status of a given test unit
+                            };//determine pass/fail status of a given test unit
                         if (typeof err === "string") {
                             data.push("fail");
                             data.push(err);
@@ -203,10 +215,10 @@
                         writeLine(data);
                     });
                 },
-                units = [],
-                buildup = function testrunner__shell_buildup(tasks) {
-                    var a = 0,
-                        len = tasks.length,
+                units     = [],
+                buildup   = function testrunner__shell_buildup(tasks) {
+                    var a    = 0,
+                        len  = tasks.length,
                         task = function testrunner__shell_buildup_task() {
                             console.log(tasks[a]);
                             childExec(tasks[a], function testrunner__shell_buildup_task_exec(err, stdout, stderr) {
@@ -224,13 +236,13 @@
                                         console.log("Buildup for group \x1B[36m" + testData.group + "\x1B[39m complete.");
                                         if (index[depth] === 0 && units[index[depth]].group !== undefined) {
                                             shell(units[index[depth]]);
-                                        } else {
-                                            for (index[depth]; index[depth] < grouplen[depth]; index[depth] += 1) {
-                                                if (units[index[depth]].group === undefined) {
-                                                    child(units[index[depth]]);
-                                                    if (units[index[depth] + 1] !== undefined && units[index[depth] + 1].group !== undefined) {
-                                                        break;
-                                                    }
+                                            return stdout;
+                                        }
+                                        for (index[depth] = index[depth]; index[depth] < grouplen[depth]; index[depth] += 1) {
+                                            if (units[index[depth]].group === undefined) {
+                                                child(units[index[depth]]);
+                                                if (units[index[depth] + 1] !== undefined && units[index[depth] + 1].group !== undefined) {
+                                                    break;
                                                 }
                                             }
                                         }
@@ -247,8 +259,8 @@
                 complete.push(0);
                 index.push(0);
                 gcount += 1;
-                depth += 1;
-                units = testData.units;
+                depth  += 1;
+                units  = testData.units;
                 units.sort(unitsort);
                 if (testData.teardown !== undefined && testData.teardown.length > 0) {
                     teardowns.push(testData.teardown);
@@ -260,7 +272,7 @@
                 } else if (index[depth] === 0 && units[index[depth]].group !== undefined) {
                     shell(units[index[depth]]);
                 } else {
-                    for (index[depth]; index[depth] < grouplen[depth]; index[depth] += 1) {
+                    for (index[depth] = index[depth]; index[depth] < grouplen[depth]; index[depth] += 1) {
                         if (units[index[depth]].group === undefined) {
                             child(units[index[depth]]);
                             if (units[index[depth] + 1] !== undefined && units[index[depth] + 1].group !== undefined) {
