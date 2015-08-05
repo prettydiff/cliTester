@@ -59,31 +59,19 @@
                                         ? ""
                                         : " in current group, " + total + " total",
                                     status  = (item[1] === "pass") ? "\x1B[32mPass\x1B[39m test " : "\x1B[31mFail\x1B[39m test ",
-                                    teardown = function testrunner__shell_child_writeLine_teardown(tasks) {
+                                    tab = (function testrunner__shell_child_writeLine_tab() {
                                         var a = 0,
-                                            len = tasks.length,
-                                            task = function testrunner__shell_child_writeLine_teardown_task() {
-                                                console.log(tasks[a]);
-                                                childExec(tasks[a], function testrunner__shell_child_writeLine_teardown_task_exec(err, stdout, stderr) {
-                                                    a += 1;
-                                                    if (typeof err === "string") {
-                                                        console.log(err);
-                                                    } else if (typeof stderr === "string" && stderr !== "") {
-                                                        console.log(stderr);
-                                                    } else {
-                                                        if (a === len) {
-                                                            console.log("Tear down for group \x1B[36m" + groupname[depth] + "\x1B[39m complete.\n");
-                                                        } else {
-                                                            task();
-                                                        }
-                                                    }
-                                                });
-                                            };
-                                        task();
-                                    },
-                                    groupComplete = function testrunner__shell_child_writeLine_groupComplete() {
+                                            str = "";
+                                        for (a = 0; a < depth; a += 1) {
+                                            str += "  ";
+                                        }
+                                        return str;
+                                    }()),
+                                    groupEnd = function testrunner__shell_child_writeLine_groupEnd() {
                                         var groupPass = false;
-                                        console.log("");
+                                        if (teardowns[depth].length === 0) {
+                                            console.log("");
+                                        }
                                         if (passcount[depth] === complete[depth]) {
                                             if (grouplen[depth] === 1) {
                                                 console.log(tab + "\x1B[32mThe test passed" + groupn + "\x1B[39m");
@@ -110,6 +98,7 @@
                                                 console.log(tab + "\x1B[31m" + fail + "\x1B[39m test" + plural + " (" + failper.toFixed(0) + "%) failed of \x1B[32m" + complete[depth] + "\x1B[39m tests" + groupn + ".");
                                             }
                                         }
+                                        teardowns.pop();
                                         grouplen.pop();
                                         groupname.pop();
                                         passcount.pop();
@@ -122,16 +111,55 @@
                                             if (groupPass === true) {
                                                 passcount[depth] += 1;
                                             }
+                                        } else {
+                                            console.log("\n\nAll tests complete.");
+                                            plural = (total === 1) ? "" : "s";
+                                            totaln = (fails === 1) ? "" : "s";
+                                            groupn = (fgroup === 1) ? "" : "s";
+                                            status = (gcount === 1) ? "" : "s";
+                                            if (fails === 0) {
+                                                console.log("\x1B[32mPassed all " + total + " test" + plural + " from all " + gcount + " groups.\x1B[39m");
+                                            } else if (fails === total) {
+                                                console.log("\x1B[31mFailed all " + total + " test" + plural + " from all " + gcount + " groups.\x1B[39m");
+                                            } else {
+                                                console.log("\x1B[31mFailed " + fails + " test" + totaln + " from " + fgroup + " group" + groupn + "\x1B[39m out of " + total + " total tests across " + gcount + " group" + status + ".");
+                                            }
+                                        }
+                                        if (depth > -1 && complete[depth] === grouplen[depth]) {
+                                            groupComplete();
                                         }
                                     },
-                                    tab = (function testrunner__shell_child_writeLine_tab() {
+                                    teardown = function testrunner__shell_child_writeLine_teardown(tasks) {
                                         var a = 0,
-                                            str = "";
-                                        for (a = 0; a < depth; a += 1) {
-                                            str += "  ";
+                                            len = tasks.length,
+                                            task = function testrunner__shell_child_writeLine_teardown_task() {
+                                                console.log(tab + tasks[a]);
+                                                childExec(tasks[a], function testrunner__shell_child_writeLine_teardown_task_exec(err, stdout, stderr) {
+                                                    a += 1;
+                                                    if (typeof err === "string") {
+                                                        console.log(err);
+                                                    } else if (typeof stderr === "string" && stderr !== "") {
+                                                        console.log(stderr);
+                                                    } else {
+                                                        if (a === len) {
+                                                            console.log(tab + "Tear down for group \x1B[33m" + groupname[depth] + "\x1B[39m complete.");
+                                                            groupEnd();
+                                                        } else {
+                                                            task();
+                                                        }
+                                                    }
+                                                });
+                                            };
+                                        console.log("");
+                                        task();
+                                    },
+                                    groupComplete = function testrunner__shell_child_writeLine_groupComplete() {
+                                        if (teardowns[depth].length > 0) {
+                                            teardown(teardowns[depth]);
+                                        } else {
+                                            groupEnd();
                                         }
-                                        return str;
-                                    }());
+                                    };
                                 complete[depth] += 1;
                                 if (single === false && complete[depth] === 1) {
                                     if (depth === 0) {
@@ -151,30 +179,7 @@
                                     console.log(tab + item[2]);
                                 }
                                 if (complete[depth] === grouplen[depth]) {
-                                    do {
-                                        groupComplete();
-                                    } while (depth > -1 && complete[depth] === grouplen[depth]);
-                                    if (depth < 0) {
-                                        console.log("\n\nAll tests complete.");
-                                        plural = (total === 1) ? "" : "s";
-                                        totaln = (fails === 1) ? "" : "s";
-                                        groupn = (fgroup === 1) ? "" : "s";
-                                        status = (gcount === 1) ? "" : "s";
-                                        if (fails === 0) {
-                                            console.log("\x1B[32mPassed all " + total + " test" + plural + " from all " + gcount + " groups.\x1B[39m");
-                                        } else if (fails === total) {
-                                            console.log("\x1B[31mFailed all " + total + " test" + plural + " from all " + gcount + " groups.\x1B[39m");
-                                        } else {
-                                            console.log("\x1B[31mFailed " + fails + " test" + totaln + " from " + fgroup + " group" + groupn + "\x1B[39m out of " + total + " total tests across " + gcount + " group" + status + ".");
-                                        }
-                                    }
-                                    if (teardowns.length > 0) {
-                                        if (teardowns[teardowns.length - 1].length > 0) {
-                                            teardown(teardowns.pop());
-                                        } else {
-                                            teardowns.pop();
-                                        }
-                                    }
+                                    groupComplete();
                                 } else if (units[complete[depth]] !== undefined && units[complete[depth]].group !== undefined) {
                                     shell(units[complete[depth]]);
                                 }
@@ -213,11 +218,22 @@
                                     console.log("\x1B[31mError:\x1B[39m " + stderr);
                                     console.log("Terminated early");
                                 } else {
-                                    if (a === len) {
-                                        console.log("Buildup for group \x1B[36m" + testData.group + "\x1B[39m complete.");
-                                        units.forEach(child);
-                                    } else {
+                                    if (a < len) {
                                         task();
+                                    } else {
+                                        console.log("Buildup for group \x1B[36m" + testData.group + "\x1B[39m complete.");
+                                        if (index[depth] === 0 && units[index[depth]].group !== undefined) {
+                                            shell(units[index[depth]]);
+                                        } else {
+                                            for (index[depth]; index[depth] < grouplen[depth]; index[depth] += 1) {
+                                                if (units[index[depth]].group === undefined) {
+                                                    child(units[index[depth]]);
+                                                    if (units[index[depth] + 1] !== undefined && units[index[depth] + 1].group !== undefined) {
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             });
@@ -233,14 +249,15 @@
                 gcount += 1;
                 depth += 1;
                 units = testData.units;
-                if (typeof testData.buildup === "object" && testData.buildup.length > 0) {
-                    buildup(testData.buildup);
-                }
-                if (typeof testData.teardown === "object" && testData.teardown.length > 0) {
-                    teardowns.push(testData.teardown);
-                }
                 units.sort(unitsort);
-                if (index[depth] === 0 && units[index[depth]].group !== undefined) {
+                if (testData.teardown !== undefined && testData.teardown.length > 0) {
+                    teardowns.push(testData.teardown);
+                } else {
+                    teardowns.push([]);
+                }
+                if (testData.buildup !== undefined && testData.buildup.length > 0) {
+                    buildup(testData.buildup);
+                } else if (index[depth] === 0 && units[index[depth]].group !== undefined) {
                     shell(units[index[depth]]);
                 } else {
                     for (index[depth]; index[depth] < grouplen[depth]; index[depth] += 1) {
