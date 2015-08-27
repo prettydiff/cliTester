@@ -23,6 +23,7 @@
         grouplen  = [], //length of local group
         groupname = [], //name of current group
         teardowns = [], //a list of tear down lists
+        units     = [], //test unit arrays
         index     = [], //current array index of current group
         total     = 0, //total number of tests
         gcount    = 0, //total number of groups
@@ -41,15 +42,24 @@
         }()),
         unitsort  = function (aa, bb) {
             if (aa.group === undefined && bb.group !== undefined) {
-                return -1;
+                return 1;
             }
-            return 1;
+            return -1;
         },
         shell     = function testrunner__shell(testData) {
             var childExec = require("child_process").exec,
+                tab       = (function testrunner__shell_child_writeLine_tab() {
+                    var a   = 0,
+                        str = "";
+                    for (a = 0; a < depth + 1; a += 1) {
+                        str += "  ";
+                    }
+                    return str;
+                }()),
                 child     = function testrunner__shell_child(param) {
                     childExec(param.check, function testrunner__shell_child(err, stdout, stderr) {
-                        var data      = [param.name],//what to do when a group concludes
+                        var data      = [param.name],
+                            //what to do when a group concludes
                             writeLine = function writeLine(item) {
                                 var fail          = 0,
                                     failper       = 0,
@@ -63,14 +73,6 @@
                                     status        = (item[1] === "pass")
                                         ? "\x1B[32mPass\x1B[39m test "
                                         : "\x1B[31mFail\x1B[39m test ",
-                                    tab           = (function testrunner__shell_child_writeLine_tab() {
-                                        var a   = 0,
-                                            str = "";
-                                        for (a = 0; a < depth; a += 1) {
-                                            str += "  ";
-                                        }
-                                        return str;
-                                    }()),
                                     groupEnd      = function testrunner__shell_child_writeLine_groupEnd() {
                                         var groupPass = false;
                                         if (teardowns[depth].length === 0) {
@@ -107,6 +109,8 @@
                                         groupname.pop();
                                         passcount.pop();
                                         complete.pop();
+                                        units.pop();
+                                        index.pop();
                                         depth -= 1;
                                         if (depth > -1) {
                                             tab             = tab.slice(2);
@@ -114,6 +118,14 @@
                                             groupn          = " for group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m";
                                             if (groupPass === true) {
                                                 passcount[depth] += 1;
+                                            }
+                                            if (complete[depth] < grouplen[depth]) {
+                                                index[depth] += 1;
+                                                if (units[depth][index].group !== undefined) {
+                                                    shell(units[depth][index]);
+                                                } else {
+                                                    child(units[depth][index]);
+                                                }
                                             }
                                         } else {
                                             console.log("\n\nAll tests complete.");
@@ -155,7 +167,7 @@
                                                         console.log(stderr);
                                                     } else {
                                                         if (a === len) {
-                                                            console.log(tab + "Tear down for group \x1B[33m" + groupname[depth] + "\x1B[39m complete.");
+                                                            console.log(tab + "\x1B[36mTeardown\x1B[39m for group: \x1B[33m" + groupname[depth] + "\x1B[39m \x1B[32mcomplete\x1B[39m.\n");
                                                             groupEnd();
                                                             return stdout;
                                                         }
@@ -163,7 +175,7 @@
                                                     }
                                                 });
                                             };
-                                        console.log("");
+                                        console.log("\n\x1B[36mTeardown\x1B[39m for group: \x1B[33m" + groupname[depth] + "\x1B[39m \x1B[36mstarted\x1B[39m.");
                                         task();
                                     },
                                     groupComplete = function testrunner__shell_child_writeLine_groupComplete() {
@@ -178,16 +190,12 @@
                                     if (depth === 0) {
                                         console.log("\n" + tab.slice(2) + "\x1B[36mTest group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m");
                                     } else {
-                                        console.log(tab.slice(2) + "Test unit " + (complete[depth - 1] + 1) + " of " + grouplen[depth - 1] + ", \x1B[36mtest group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m");
+                                        console.log("\n" + tab.slice(2) + "Test unit " + (complete[depth - 1] + 1) + " of " + grouplen[depth - 1] + ", \x1B[36mtest group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m");
                                     }
                                 }
-                                console.log(tab + status + complete[depth] + " of " + grouplen[depth] + totaln);
                                 console.log(tab + item[0]);
-                                if (item[1] === "pass") {
-                                    if (complete[depth] !== grouplen[depth]) {
-                                        console.log("");
-                                    }
-                                } else {
+                                console.log(tab + status + complete[depth] + " of " + grouplen[depth] + totaln);
+                                if (item[1] !== "pass") {
                                     fails += 1;
                                     console.log(tab + item[2]);
                                 }
@@ -196,7 +204,8 @@
                                 } else if (units[complete[depth]] !== undefined && units[complete[depth]].group !== undefined) {
                                     shell(units[complete[depth]]);
                                 }
-                            };//determine pass/fail status of a given test unit
+                            };
+                        //determine pass/fail status of a given test unit
                         if (typeof err === "string") {
                             data.push("fail");
                             data.push(err);
@@ -215,12 +224,11 @@
                         writeLine(data);
                     });
                 },
-                units     = [],
                 buildup   = function testrunner__shell_buildup(tasks) {
                     var a    = 0,
                         len  = tasks.length,
                         task = function testrunner__shell_buildup_task() {
-                            console.log(tasks[a]);
+                            console.log(tab + tasks[a]);
                             childExec(tasks[a], function testrunner__shell_buildup_task_exec(err, stdout, stderr) {
                                 a += 1;
                                 if (typeof err === "string") {
@@ -233,15 +241,15 @@
                                     if (a < len) {
                                         task();
                                     } else {
-                                        console.log("Buildup for group \x1B[36m" + testData.group + "\x1B[39m complete.");
-                                        if (index[depth] === 0 && units[index[depth]].group !== undefined) {
-                                            shell(units[index[depth]]);
+                                        console.log(tab + "\x1B[36mBuildup\x1B[39m for group: \x1B[33m" + testData.group + "\x1B[39m \x1B[32mcomplete\x1B[39m.");
+                                        if (index[depth] === 0 && units[depth][index[depth]].group !== undefined) {
+                                            shell(units[depth][index[depth]]);
                                             return stdout;
                                         }
                                         for (index[depth] = index[depth]; index[depth] < grouplen[depth]; index[depth] += 1) {
-                                            if (units[index[depth]].group === undefined) {
-                                                child(units[index[depth]]);
-                                                if (units[index[depth] + 1] !== undefined && units[index[depth] + 1].group !== undefined) {
+                                            if (units[depth][index[depth]].group === undefined) {
+                                                child(units[depth][index[depth]]);
+                                                if (units[depth][index[depth] + 1] !== undefined && units[depth][index[depth] + 1].group !== undefined) {
                                                     break;
                                                 }
                                             }
@@ -250,18 +258,19 @@
                                 }
                             });
                         };
+                    console.log(tab + "\n\x1B[36mBuildup\x1B[39m for group: \x1B[33m" + testData.group + "\x1B[39m \x1B[36mstarted\x1B[39m.");
                     task();
                 };
             passcount.push(0);
             if (single === false) {
                 groupname.push(testData.group);
-                grouplen.push(testData.units.length);
                 complete.push(0);
                 index.push(0);
                 gcount += 1;
                 depth  += 1;
-                units  = testData.units;
-                units.sort(unitsort);
+                units.push(testData.units);
+                units[depth].sort(unitsort);
+                grouplen.push(units[depth].length);
                 if (testData.teardown !== undefined && testData.teardown.length > 0) {
                     teardowns.push(testData.teardown);
                 } else {
@@ -269,13 +278,13 @@
                 }
                 if (testData.buildup !== undefined && testData.buildup.length > 0) {
                     buildup(testData.buildup);
-                } else if (index[depth] === 0 && units[index[depth]].group !== undefined) {
-                    shell(units[index[depth]]);
+                } else if (index[depth] === 0 && units[depth][index[depth]].group !== undefined) {
+                    shell(units[depth][index[depth]]);
                 } else {
                     for (index[depth] = index[depth]; index[depth] < grouplen[depth]; index[depth] += 1) {
-                        if (units[index[depth]].group === undefined) {
-                            child(units[index[depth]]);
-                            if (units[index[depth] + 1] !== undefined && units[index[depth] + 1].group !== undefined) {
+                        if (units[depth][index[depth]].group === undefined) {
+                            child(units[depth][index[depth]]);
+                            if (units[depth][index[depth] + 1] !== undefined && units[depth][index[depth] + 1].group !== undefined) {
                                 break;
                             }
                         }
