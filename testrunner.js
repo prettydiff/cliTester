@@ -31,6 +31,7 @@
         fails     = 0, //total number of failed tests
         depth     = -1, //current depth
         single    = false,//look for the unit test file
+        tablen    = 2,//size of indentation in spaces
         tests     = (function () {
             var location = process.argv[2],
                 loctry   = (typeof location === "string" && location.length > 0)
@@ -50,9 +51,12 @@
             var childExec = require("child_process").exec,
                 tab       = (function testrunner__shell_child_writeLine_tab() {
                     var a   = 0,
+                        b   = 0,
                         str = "";
-                    for (a = 0; a < depth + 1; a += 1) {
-                        str += "  ";
+                    for (a = depth + 2; a > 0; a -= 1) {
+                        for (b = tablen; b > 0; b -= 1) {
+                            str += " ";
+                        }
                     }
                     return str;
                 }()),
@@ -80,17 +84,17 @@
                                         }
                                         if (passcount[depth] === complete[depth]) {
                                             if (grouplen[depth] === 1) {
-                                                console.log(tab + "\x1B[32mThe test passed" + groupn + "\x1B[39m");
+                                                console.log(tab.slice(tablen) + "\x1B[32mThe test passed" + groupn + "\x1B[39m");
                                             } else {
-                                                console.log(tab + "\x1B[32mAll " + grouplen[depth] + " tests passed" + groupn + "\x1B[39m");
+                                                console.log(tab.slice(tablen) + "\x1B[32mAll " + grouplen[depth] + " tests passed" + groupn + "\x1B[39m");
                                             }
                                             groupPass = true;
                                         } else {
                                             if (passcount[depth] === 0) {
                                                 if (grouplen[depth] === 1) {
-                                                    console.log(tab + "\x1B[31mThe test failed" + groupn + "\x1B[39m");
+                                                    console.log(tab.slice(tablen) + "\x1B[31mThe test failed" + groupn + "\x1B[39m");
                                                 } else {
-                                                    console.log(tab + "\x1B[31mAll " + grouplen[depth] + " tests failed" + groupn + "\x1B[39m");
+                                                    console.log(tab.slice(tablen) + "\x1B[31mAll " + grouplen[depth] + " tests failed" + groupn + "\x1B[39m");
                                                 }
                                             } else {
                                                 fgroup  += 1;
@@ -101,7 +105,7 @@
                                                 } else {
                                                     plural = "s";
                                                 }
-                                                console.log(tab + "\x1B[31m" + fail + "\x1B[39m test" + plural + " (" + failper.toFixed(0) + "%) failed of \x1B[32m" + complete[depth] + "\x1B[39m tests" + groupn + ".");
+                                                console.log(tab.slice(tablen) + "\x1B[31m" + fail + "\x1B[39m test" + plural + " (" + failper.toFixed(0) + "%) failed of \x1B[32m" + complete[depth] + "\x1B[39m tests" + groupn + ".");
                                             }
                                         }
                                         teardowns.pop();
@@ -113,7 +117,7 @@
                                         index.pop();
                                         depth -= 1;
                                         if (depth > -1) {
-                                            tab             = tab.slice(2);
+                                            tab             = tab.slice(tablen);
                                             complete[depth] += 1;
                                             groupn          = " for group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m";
                                             if (groupPass === true) {
@@ -158,7 +162,7 @@
                                         var a    = 0,
                                             len  = tasks.length,
                                             task = function testrunner__shell_child_writeLine_teardown_task() {
-                                                console.log(tab + tasks[a]);
+                                                console.log(tab + "  " + tasks[a]);
                                                 childExec(tasks[a], function testrunner__shell_child_writeLine_teardown_task_exec(err, stdout, stderr) {
                                                     a += 1;
                                                     if (typeof err === "string") {
@@ -175,7 +179,7 @@
                                                     }
                                                 });
                                             };
-                                        console.log("\n\x1B[36mTeardown\x1B[39m for group: \x1B[33m" + groupname[depth] + "\x1B[39m \x1B[36mstarted\x1B[39m.");
+                                        console.log("\n" + tab + "\x1B[36mTeardown\x1B[39m for group: \x1B[33m" + groupname[depth] + "\x1B[39m \x1B[36mstarted\x1B[39m.");
                                         task();
                                     },
                                     groupComplete = function testrunner__shell_child_writeLine_groupComplete() {
@@ -188,9 +192,9 @@
                                 complete[depth] += 1;
                                 if (single === false && complete[depth] === 1) {
                                     if (depth === 0) {
-                                        console.log("\n" + tab.slice(2) + "\x1B[36mTest group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m");
+                                        console.log("\n" + tab.slice(tablen) + "\x1B[36mTest group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m");
                                     } else {
-                                        console.log("\n" + tab.slice(2) + "Test unit " + (complete[depth - 1] + 1) + " of " + grouplen[depth - 1] + ", \x1B[36mtest group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m");
+                                        console.log("\n" + tab.slice(tablen) + "Test unit " + (complete[depth - 1] + 1) + " of " + grouplen[depth - 1] + ", \x1B[36mtest group: \x1B[39m\x1B[33m" + groupname[depth] + "\x1B[39m");
                                     }
                                 }
                                 console.log(tab + item[0]);
@@ -228,7 +232,7 @@
                     var a    = 0,
                         len  = tasks.length,
                         task = function testrunner__shell_buildup_task() {
-                            console.log(tab + tasks[a]);
+                            console.log(tab + "  " + tasks[a]);
                             childExec(tasks[a], function testrunner__shell_buildup_task_exec(err, stdout, stderr) {
                                 a += 1;
                                 if (typeof err === "string") {
@@ -258,7 +262,7 @@
                                 }
                             });
                         };
-                    console.log(tab + "\n\x1B[36mBuildup\x1B[39m for group: \x1B[33m" + testData.group + "\x1B[39m \x1B[36mstarted\x1B[39m.");
+                    console.log("\n" + tab + "\x1B[36mBuildup\x1B[39m for group: \x1B[33m" + testData.group + "\x1B[39m \x1B[36mstarted\x1B[39m.");
                     task();
                 };
             passcount.push(0);

@@ -39,6 +39,11 @@ var tests = [
                         verify: "{\"token\":[\"<a>\",\"<b>\",\" \",\"<c/>\",\" \",\"</b>\",\"</a>\"],\"types\":[\"start\",\"start\",\"content\",\"singleton\",\"content\",\"end\",\"end\"]}"
                     }
                 ]
+            },
+            {
+                check: "node node_modules/prettydiff/api/node-local.js source:\"node_modules/prettydiff/testa.txt\" readmethod:\"file\" mode:\"beautify\"\n",
+                name: "Verify readmethod:file throws error on missing output option",
+                verify: "Error: 'readmethod' is value 'file' and argument 'output' is empty"
             }
         ]
     }
